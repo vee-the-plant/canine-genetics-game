@@ -46,11 +46,9 @@ def render_ui(text, buttons_dict):
     output_div = document.querySelector("#output")
     controls_div = document.querySelector("#controls")
     
-    # Update status & text
     header = f"=== DAY {game_state['day']} ===\nBank Vault: ${game_state['money']} | Actions Left: {game_state['actions']}/3\n\n"
     output_div.innerHTML = f"<pre>{header}{text}</pre>"
     
-    # Clear old buttons and render new clickable buttons
     controls_div.innerHTML = ""
     for label, callback in buttons_dict.items():
         btn = document.createElement("button")
@@ -74,7 +72,7 @@ def view_kennel(e):
     else:
         text = "🐾 KENNEL REGISTRY:\n"
         for dog in game_state["kennel"].values():
-            text += f"\n- {dog['name']} ({dog['sex']} - {dog['breed']})\n  Age: {dog['age']} | Health: {dog['health']}% | Fertility: {dog['fertility']}%\n  Stats -> Agility: {dog['stats']['Agility']} | Strength: {dog['stats']['Strength']} | Perception: {dog['stats']['Perception']}\n"
+            text += f"\n• {dog['name']} ({dog['sex']} - {dog['breed']})\n  Age: {dog['age']} | Health: {dog['health']}% | Fertility: {dog['fertility']}%\n  Stats -> Agility: {dog['stats']['Agility']} | Strength: {dog['stats']['Strength']} | Perception: {dog['stats']['Perception']}\n"
     render_ui(text, {"Back to Menu": show_main_menu})
 
 def train_menu(e):
