@@ -27,7 +27,7 @@
             border: 2px solid #285430;
             border-radius: 12px;
             padding: 30px;
-            width: 800px;
+            width: 900px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.5);
         }
         button {
@@ -56,9 +56,11 @@
             font-family: 'Courier New', Courier, monospace;
             font-size: 13px;
             line-height: 1.5;
-            max-height: 350px;
+            max-height: 420px;
             overflow-y: auto;
         }
+        .male-tag { color: #6ea8fe; font-weight: bold; }
+        .female-tag { color: #f38ba8; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -70,7 +72,7 @@
         <div id="controls" style="margin-top: 20px;"></div>
     </div>
 
-    <!-- Embedded Full-Feature Python Game Engine -->
+    <!-- Embedded Python Game Engine -->
     <script type="py">
         import random
         from pyscript import document
@@ -89,35 +91,83 @@
             "Kitsune Spirit Fox-Dog": {"group": "Mythic"}
         }
 
+        TRAININGS = {
+            "Obedience Drill": {"stat": "Discipline", "boost": 3, "cost_action": 1},
+            "Agility Obstacle Course": {"stat": "Agility", "boost": 4, "cost_action": 1},
+            "Weight Pull Conditioning": {"stat": "Strength", "boost": 4, "cost_action": 1},
+            "Tracking & Scent Work": {"stat": "Perception", "boost": 4, "cost_action": 1},
+            "Guard Dog Tactics": {"stat": "Aggression", "boost": 3, "cost_action": 1},
+            "Mythic Attunement": {"stat": "Mythic Resonance", "boost": 5, "cost_action": 2}
+        }
+
+        SHOP_ITEMS = {
+            "Ethereal Elixir": {"cost": 500, "desc": "Infuses lineage with mythic latent traits."},
+            "Ghost-fire Collar": {"cost": 300, "desc": "Unlocks phantom tracking abilities."},
+            "Celestite Chew Toy": {"cost": 150, "desc": "Boosts puppy temperament development."}
+        }
+
         class Dog:
-            def __init__(self, name, sex, breed):
+            def __init__(self, name, sex, breed, father="Unknown", mother="Unknown"):
                 self.name = name
                 self.sex = sex
                 self.breed = breed if breed in BREEDS else "Mutt"
-                self.age = random.randint(1, 3)
+                self.age = 0 
                 self.health = 100
-                self.fertility = random.randint(60, 95)
+                self.fertility = random.randint(50, 95)
                 self.is_in_heat = True if sex == "Female" else False
                 self.is_pregnant = False
                 self.pregnancy_days = 0
+                self.father = father
+                self.mother = mother
+                
+                # Traits, Hidden Attributes & Disabilities
+                self.revealed_traits = set()
+                self.disabilities = random.choice([None, None, None, "Blindness in one eye", "Hip Dysplasia", "Deafness", "Frail Constitution"])
+                
                 self.stats = {
                     "Agility": random.randint(8, 15),
                     "Strength": random.randint(8, 15),
-                    "Perception": random.randint(8, 15)
+                    "Perception": random.randint(8, 15),
+                    "Discipline": random.randint(5, 12),
+                    "Aggression": random.randint(5, 12),
+                    "Mythic Resonance": random.randint(0, 5)
                 }
 
-            def get_summary(self):
-                heat_status = f" | In Heat: {'🔥 Yes' if self.is_in_heat else 'No'}" if self.sex == "Female" else ""
-                preg_status = f"\n   Status: Pregnant ({self.pregnancy_days} days left)" if self.is_pregnant else ""
-                return (f"• {self.name} ({self.sex} - {self.breed}){heat_status}\n"
-                        f"   Age: {self.age} | Health: {self.health}% | Fertility: {self.fertility}%\n"
-                        f"   Stats -> Agility: {self.stats['Agility']} | Strength: {self.stats['Strength']} | Perception: {self.stats['Perception']}{preg_status}\n")
+            def get_trait_display(self, trait_name, actual_value):
+                if trait_name in self.revealed_traits:
+                    return str(actual_value)
+                return "🔒 Hidden"
+
+            def get_html_summary(self):
+                sex_class = "male-tag" if self.sex == "Male" else "female-tag"
+                fert_str = self.get_trait_display("fertility", f"{self.fertility}%")
+                agi_str = self.get_trait_display("Agility", self.stats['Agility'])
+                str_str = self.get_trait_display("Strength", self.stats['Strength'])
+                per_str = self.get_trait_display("Perception", self.stats['Perception'])
+                disc_str = self.get_trait_display("Discipline", self.stats['Discipline'])
+                agg_str = self.get_trait_display("Aggression", self.stats['Aggression'])
+                myth_str = self.get_trait_display("Mythic Resonance", self.stats['Mythic Resonance'])
+                
+                heat_str = f" | In Heat: 🔥 Yes" if self.sex == "Female" and self.is_in_heat else ""
+                preg_str = f"<br>&nbsp;&nbsp;Status: Pregnant ({self.pregnancy_days} days left)" if self.is_pregnant else ""
+                disab_str = f"<br>&nbsp;&nbsp;⚠️ Disability: {self.disabilities}" if self.disabilities else ""
+                
+                return (f"• <span class='{sex_class}'>{self.name}</span> ({self.sex} - {self.breed}){heat_str}<br>"
+                        f"&nbsp;&nbsp;Age: {self.age} yrs | Health: {self.health}% | Fertility: {fert_str}{disab_str}<br>"
+                        f"&nbsp;&nbsp;Lineage -> Sire: {self.father} | Dam: {self.mother}<br>"
+                        f"&nbsp;&nbsp;Stats -> Agi: {agi_str} | Str: {str_str} | Perc: {per_str} | Disc: {disc_str} | Agg: {agg_str} | Mythic: {myth_str}{preg_str}<br>")
 
         game_state = {
-            "money": 1200,
+            "money": 1500,
+            "reputation": 10,
             "day": 1,
             "actions": 3,
-            "kennel": {}
+            "kennel": {},
+            "active_contract": None,
+            "selected_males": [],
+            "starters_m": [],
+            "starters_f": [],
+            "market_dogs": []
         }
 
         def get_unique_name():
@@ -125,17 +175,75 @@
                 return NAME_POOL.pop(0)
             return f"Dog_{random.randint(100, 999)}"
 
-        # Initialize starting pair
-        starter_male = Dog(get_unique_name(), "Male", random.choice(list(BREEDS.keys())))
-        starter_female = Dog(get_unique_name(), "Female", random.choice(list(BREEDS.keys())))
-        game_state["kennel"][starter_male.name] = starter_male
-        game_state["kennel"][starter_female.name] = starter_female
+        def init_setup():
+            game_state["starters_m"] = [Dog(get_unique_name(), "Male", random.choice(list(BREEDS.keys()))) for _ in range(4)]
+            game_state["starters_f"] = [Dog(get_unique_name(), "Female", random.choice(list(BREEDS.keys()))) for _ in range(4)]
+            game_state["selected_males"] = []
+            show_setup_males()
+
+        def show_setup_males():
+            needed = 2 - len(game_state["selected_males"])
+            text = f"🐾 FOUNDATION SETUP: Choose your Foundation Sires (Male). Pick {needed} more:"
+            if game_state["selected_males"]:
+                text += "\nCurrently Selected Males: " + ",.join([d.name for d in game_state["selected_males"]])
+            
+            buttons = {}
+            for dog in game_state["starters_m"]:
+                if dog not in game_state["selected_males"]:
+                    desc = f"{dog.name} ({dog.breed})"
+                    buttons[desc] = lambda event, d=dog: select_male_starter(d)
+            render_plain_ui(text, buttons)
+
+        def select_male_starter(dog):
+            game_state["selected_males"].append(dog)
+            if len(game_state["selected_males"]) < 2:
+                show_setup_males()
+            else:
+                show_setup_females()
+
+        def show_setup_females():
+            text = f"🐾 FOUNDATION SETUP: Sires Selected ({', '.join([d.name for d in game_state['selected_males']])}). Now choose your 2 Foundation Dams (Female):"
+            buttons = {}
+            for dog in game_state["starters_f"]:
+                desc = f"{dog.name} ({dog.breed})"
+                buttons[desc] = lambda event, d=dog: complete_setup(d)
+            render_plain_ui(text, buttons)
+
+        def complete_setup(female_dog):
+            # Add selected males
+            for m in game_state["selected_males"]:
+                game_state["kennel"][m.name] = m
+            # Add chosen female first, then pick one more automatically from remaining starters to total 2 females
+            game_state["kennel"][female_dog.name] = female_dog
+            remaining_females = [f for f in game_state["starters_f"] if f != female_dog]
+            second_female = random.choice(remaining_females)
+            game_state["kennel"][second_female.name] = second_female
+
+            refresh_market()
+            show_main_menu()
+
+        def refresh_market():
+            game_state["market_dogs"] = [
+                Dog(get_unique_name(), random.choice(["Male", "Female"]), random.choice(list(BREEDS.keys())), father="Market Broker", mother="Market Broker") 
+                for _ in range(3)
+            ]
+
+        def render_plain_ui(text, buttons_dict):
+            output_div = document.querySelector("#output")
+            controls_div = document.querySelector("#controls")
+            output_div.innerHTML = f"<pre>{text}</pre>"
+            controls_div.innerHTML = ""
+            for label, callback in buttons_dict.items():
+                btn = document.createElement("button")
+                btn.innerText = label
+                btn.onclick = callback
+                controls_div.appendChild(btn)
 
         def render_ui(text, buttons_dict):
             output_div = document.querySelector("#output")
             controls_div = document.querySelector("#controls")
             
-            header = f"=== DAY {game_state['day']} ===\nBank Vault: ${game_state['money']} | Actions Left: {game_state['actions']}/3\n\n"
+            header = f"=== DAY {game_state['day']} ===\nBank Vault: ${game_state['money']} | Rep: {game_state['reputation']} | Actions Left: {game_state['actions']}/3\n\n"
             output_div.innerHTML = f"<pre>{header}{text}</pre>"
             
             controls_div.innerHTML = ""
@@ -148,9 +256,13 @@
         def show_main_menu(e=None):
             text = "Choose an action for your kennel:"
             buttons = {
-                "View Kennel": view_kennel,
-                "Train Dog (-1 Action)": train_menu,
-                "Breeding Center": breeding_menu,
+                "View Kennel & Lineage": view_kennel,
+                "Buy Dogs (Market)": market_menu,
+                "Vet Clinic (Medical & Reveal)": vet_menu,
+                "Specialty Shop": shop_menu,
+                "Client Contracts": client_menu,
+                "Train Dog (Specialized)": train_menu,
+                "Breeding & Stud Services": breeding_menu,
                 "Explore Zones (-1 Action)": explore_zone,
                 "End Day": end_day
             }
@@ -160,98 +272,273 @@
             if not game_state["kennel"]:
                 text = "Your kennel is empty."
             else:
-                text = "🐾 KENNEL REGISTRY:\n\n"
+                text = "🐾 KENNEL REGISTRY & LINEAGE (Traits hidden until evaluated by Vet):\n\n"
                 for dog in game_state["kennel"].values():
-                    text += dog.get_summary() + "\n"
+                    text += dog.get_html_summary() + "\n"
             render_ui(text, {"Back to Menu": show_main_menu})
+
+        def market_menu(e):
+            text = "🛒 ADOPTION & PURCHASE MARKET:\nPurchase new bloodlines to diversify your kennel.\n\n"
+            buttons = {}
+            for dog in game_state["market_dogs"]:
+                cost = 400
+                buttons[f"Buy {dog.name} ({dog.sex} {dog.breed}) - ${cost}"] = lambda event, d=dog, c=cost: buy_dog(d, c)
+            buttons["Back to Menu"] = show_main_menu
+            render_ui(text, buttons)
+
+        def buy_dog(dog, cost):
+            if game_state["money"] >= cost:
+                game_state["money"] -= cost
+                game_state["kennel"][dog.name] = dog
+                game_state["market_dogs"].remove(dog)
+                render_ui(f"🎉 Successfully purchased {dog.name}!", {"Back to Menu": show_main_menu})
+            else:
+                render_ui("⚠️ Not enough funds in the bank vault!", {"Back to Menu": show_main_menu})
+
+        def vet_menu(e):
+            text = "🏥 VET CLINIC:\nChoose a medical service or diagnostic test:\n"
+            buttons = {
+                "Reveal Trait / Fertility (-$50)": vet_reveal_menu,
+                "Artificial Insemination (-$150)": vet_insemination_menu,
+                "Pregnancy Termination (-$100)": vet_abortion_menu,
+                "Back to Menu": show_main_menu
+            }
+            render_ui(text, buttons)
+
+        def vet_reveal_menu(e):
+            if game_state["money"] < 50:
+                render_ui("⚠️ You need at least $50!", {"Back to Menu": vet_menu})
+                return
+            buttons = {}
+            for name in game_state["kennel"].keys():
+                buttons[f"Examine {name}"] = lambda event, n=name: execute_vet_reveal(n)
+            buttons["Back"] = vet_menu
+            render_ui("Select dog for trait diagnostics:", buttons)
+
+        def execute_vet_reveal(dog_name):
+            dog = game_state["kennel"][dog_name]
+            all_traits = ["fertility", "Agility", "Strength", "Perception", "Discipline", "Aggression", "Mythic Resonance"]
+            unrevealed = [t for t in all_traits if t not in dog.revealed_traits]
+            if not unrevealed:
+                render_ui(f"🩺 All traits for {dog.name} are already fully uncovered!", {"Back to Menu": vet_menu})
+                return
+            game_state["money"] -= 50
+            chosen = random.choice(unrevealed)
+            dog.revealed_traits.add(chosen)
+            val = f"{dog.fertility}%" if chosen == "fertility" else str(dog.stats[chosen])
+            render_ui(f"🩺 Revealed **{chosen}**: {val} for {dog.name}.", {"Back to Menu": vet_menu})
+
+        def vet_insemination_menu(e):
+            females = [name for name, d in game_state["kennel"].items() if d.sex == "Female" and not d.is_pregnant]
+            males = [name for name, d in game_state["kennel"].items() if d.sex == "Male"]
+            if not females or not males or game_state["money"] < 150:
+                render_ui("⚠️ Requires $150, an available Female, and a Male sire.", {"Back to Menu": vet_menu})
+                return
+            buttons = {}
+            for f in females:
+                buttons[f"Inseminate {f}"] = lambda event, fn=f: select_insem_sire(fn, males)
+            buttons["Back"] = vet_menu
+            render_ui("Select Female for Artificial Insemination:", buttons)
+
+        def select_insem_sire(mom_name, males):
+            buttons = {}
+            for m in males:
+                buttons[f"Sire: {m}"] = lambda event, d=m, f=mom_name: confirm_insemination(f, d)
+            buttons["Back"] = vet_insemination_menu
+            render_ui(f"Select Sire for {mom_name}:", buttons)
+
+        def confirm_insemination(mom_name, dad_name):
+            game_state["money"] -= 150
+            mom = game_state["kennel"][mom_name]
+            mom.is_pregnant = True
+            mom.pregnancy_days = 2
+            render_ui(f"🧬 Artificial Insemination successful! {mom.name} is pregnant via {dad_name}.", {"Back to Menu": show_main_menu})
+
+        def vet_abortion_menu(e):
+            pregnant_females = [name for name, d in game_state["kennel"].items() if d.sex == "Female" and d.is_pregnant]
+            if not pregnant_females or game_state["money"] < 100:
+                render_ui("⚠️ Requires $100 and a currently pregnant female.", {"Back to Menu": vet_menu})
+                return
+            buttons = {}
+            for f in pregnant_females:
+                buttons[f"Terminate Pregnancy: {f}"] = lambda event, fn=f: execute_abortion(fn)
+            buttons["Back"] = vet_menu
+            render_ui("Select pregnant female for termination procedure:", buttons)
+
+        def execute_abortion(mom_name):
+            game_state["money"] -= 100
+            mom = game_state["kennel"][mom_name]
+            mom.is_pregnant = False
+            render_ui(f"🏥 Procedure complete. Pregnancy terminated safely for {mom.name}.", {"Back to Menu": show_main_menu})
+
+        def shop_menu(e):
+            text = "🔮 MYTHIC & SPECIALTY SHOP:\n"
+            buttons = {}
+            for item, data in SHOP_ITEMS.items():
+                buttons[f"Buy {item} (${data['cost']})"] = lambda event, i=item, cost=data['cost']: buy_shop_item(i, cost)
+            buttons["Back to Menu"] = show_main_menu
+            render_ui(text, buttons)
+
+        def buy_shop_item(item_name, cost):
+            if game_state["money"] >= cost:
+                game_state["money"] -= cost
+                render_ui(f"🎁 Successfully purchased {item_name}! Check your inventory or apply to dogs.", {"Back to Menu": shop_menu})
+            else:
+                render_ui("⚠️ Insufficient funds!", {"Back to Menu": shop_menu})
+
+        def client_menu(e):
+            contract_text = ""
+            if game_state["active_contract"]:
+                c = game_state["active_contract"]
+                contract_text = f"📋 Active Contract:\nClient wants a {c['breed']} with at least {c['target_stat']} {c['stat_name']}.\nReward: ${c['reward']} + {c['rep']} Rep\n\n"
+            else:
+                contract_text = "📋 No active contract. Take one below to earn money!\n\n"
+
+            buttons = {}
+            if not game_state["active_contract"]:
+                target_breed = random.choice(list(BREEDS.keys()))
+                stat_choice = random.choice(["Agility", "Strength", "Perception", "Discipline", "Aggression", "Mythic Resonance"])
+                target_val = random.randint(10, 18)
+                reward_cash = random.randint(500, 1000)
+                reward_rep = random.randint(4, 10)
+                buttons["Accept New Contract"] = lambda event: accept_contract(target_breed, stat_choice, target_val, reward_cash, reward_rep)
+            
+            if game_state["active_contract"] and game_state["kennel"]:
+                for name in game_state["kennel"].keys():
+                    buttons[f"Deliver {name}"] = lambda event, n=name: fulfill_contract(n)
+
+            buttons["Back to Menu"] = show_main_menu
+            render_ui(contract_text + "Select an option:", buttons)
+
+        def accept_contract(breed, stat_name, target_stat, reward, rep):
+            game_state["active_contract"] = {"breed": breed, "stat_name": stat_name, "target_stat": target_stat, "reward": reward, "rep": rep}
+            render_ui(f"📋 Contract accepted!", {"Back to Menu": show_main_menu})
+
+        def fulfill_contract(dog_name):
+            dog = game_state["kennel"][dog_name]
+            c = game_state["active_contract"]
+            if dog.breed == c["breed"] and dog.stats[c["stat_name"]] >= c["target_stat"]:
+                game_state["money"] += c["reward"]
+                game_state["reputation"] += c["rep"]
+                del game_state["kennel"][dog_name]
+                game_state["active_contract"] = None
+                render_ui(f"🎉 Contract fulfilled! Earned ${c['reward']} and {c['rep']} Rep.", {"Back to Menu": show_main_menu})
+            else:
+                render_ui(f"❌ {dog.name} does not meet contract specifications.", {"Back to Menu": show_main_menu})
 
         def train_menu(e):
             if game_state["actions"] <= 0:
-                render_ui("⚠️ You have no actions left today! End the day to reset.", {"Back to Menu": show_main_menu})
+                render_ui("⚠️ No actions left today!", {"Back to Menu": show_main_menu})
                 return
-            
             buttons = {}
             for name in game_state["kennel"].keys():
-                buttons[f"Train {name}"] = lambda event, n=name: select_stat_to_train(n)
+                buttons[f"Train {name}"] = lambda event, n=name: select_training_type(n)
             buttons["Back to Menu"] = show_main_menu
-            render_ui("Select a dog to train (-1 Action):", buttons)
+            render_ui("Select dog for specialized training:", buttons)
 
-        def select_stat_to_train(dog_name):
-            dog = game_state["kennel"][dog_name]
-            buttons = {
-                "Agility (+3)": lambda event, d=dog_name, s="Agility": execute_training(d, s),
-                "Strength (+3)": lambda event, d=dog_name, s="Strength": execute_training(d, s),
-                "Perception (+3)": lambda event, d=dog_name, s="Perception": execute_training(d, s),
-                "Back": train_menu
-            }
-            render_ui(f"Choose stat to train for {dog.name}:", buttons)
+        def select_training_type(dog_name):
+            buttons = {}
+            for t_name, t_data in TRAININGS.items():
+                buttons[f"{t_name} (+{t_data['boost']} {t_data['stat']})"] = lambda event, d=dog_name, tn=t_name: execute_specialized_training(d, tn)
+            buttons["Back"] = train_menu
+            render_ui(f"Select training program for {dog_name}:", buttons)
 
-        def execute_training(dog_name, stat):
-            if game_state["actions"] > 0:
-                game_state["actions"] -= 1
-                game_state["kennel"][dog_name].stats[stat] += 3
-                render_ui(f"✅ Training successful! {dog_name} gained +3 {stat}.", {"Back to Menu": show_main_menu})
+        def execute_specialized_training(dog_name, training_name):
+            t_data = TRAININGS[training_name]
+            if game_state["actions"] >= t_data["cost_action"]:
+                game_state["actions"] -= t_data["cost_action"]
+                game_state["kennel"][dog_name].stats[t_data["stat"]] += t_data["boost"]
+                render_ui(f"✅ Training complete! {dog_name} gained +{t_data['boost']} {t_data['stat']}.", {"Back to Menu": show_main_menu})
             else:
-                render_ui("⚠️ No actions left!", {"Back to Menu": show_main_menu})
+                render_ui("⚠️ Not enough actions left today!", {"Back to Menu": show_main_menu})
 
         def breeding_menu(e):
+            text = "breeding & stud registry:\n"
+            buttons = {
+                "Natural Breeding": natural_breed_menu,
+                "Offer Stud Services (Earn Cash)": stud_offer_menu,
+                "Back to Menu": show_main_menu
+            }
+            render_ui(text, buttons)
+
+        def natural_breed_menu(e):
             females = [name for name, d in game_state["kennel"].items() if d.sex == "Female" and not d.is_pregnant and d.is_in_heat]
             males = [name for name, d in game_state["kennel"].items() if d.sex == "Male"]
-
             if not females or not males:
-                render_ui("⚠️ You need at least one active Male and one Female in Heat to breed.", {"Back to Menu": show_main_menu})
+                render_ui("⚠️ Requires a Female in Heat and a Male.", {"Back to Menu": breeding_menu})
                 return
-            
             buttons = {}
-            for f_name in females:
-                buttons[f"Breed {f_name}"] = lambda event, fn=f_name: select_father_menu(fn, males)
-            buttons["Back to Menu"] = show_main_menu
-            render_ui("Select a Female in Heat to breed:", buttons)
-
-        def select_father_menu(mom_name, males):
-            buttons = {}
-            for m_name in males:
-                buttons[f"Sire: {m_name}"] = lambda event, m=m_name, f=mom_name: confirm_breeding(f, m)
+            for f in females:
+                buttons[f"Breed {f}"] = lambda event, fn=f: select_natural_sire(fn, males)
             buttons["Back"] = breeding_menu
-            render_ui(f"Select Father for {mom_name}:", buttons)
+            render_ui("Select Female in Heat:", buttons)
 
-        def confirm_breeding(mom_name, dad_name):
+        def select_natural_sire(mom_name, males):
+            buttons = {}
+            for m in males:
+                buttons[f"Sire: {m}"] = lambda event, d=m, f=mom_name: confirm_natural_breeding(f, d)
+            buttons["Back"] = natural_breed_menu
+            render_ui(f"Select Sire for {mom_name}:", buttons)
+
+        def confirm_natural_breeding(mom_name, dad_name):
             mom = game_state["kennel"][mom_name]
             mom.is_pregnant = True
             mom.pregnancy_days = 2
             mom.is_in_heat = False
-            render_ui(f"❤️ Success! {mom.name} is now pregnant with {dad_name}'s litter. Expected in 2 days.", {"Back to Menu": show_main_menu})
+            render_ui(f"❤️ Natural breeding successful! {mom.name} is pregnant.", {"Back to Menu": show_main_menu})
+
+        def stud_offer_menu(e):
+            males = [name for name, d in game_state["kennel"].items() if d.sex == "Male"]
+            if not males:
+                render_ui("⚠️ No male dogs available for stud.", {"Back to Menu": breeding_menu})
+                return
+            buttons = {}
+            for m in males:
+                buttons[f"Offer {m} as Stud (-1 Action)"] = lambda event, mn=m: execute_stud_service(mn)
+            buttons["Back"] = breeding_menu
+            render_ui("Select your male to stand at stud for outside breeders:", buttons)
+
+        def execute_stud_service(dog_name):
+            if game_state["actions"] > 0:
+                game_state["actions"] -= 1
+                fee = random.randint(200, 500)
+                game_state["money"] += fee
+                game_state["reputation"] += 2
+                render_ui(f"🌟 Stud service successful! {dog_name} sired external litters, earning ${fee} and +2 Reputation.", {"Back to Menu": show_main_menu})
+            else:
+                render_ui("⚠️ No actions left today!", {"Back to Menu": show_main_menu})
 
         def explore_zone(e):
             if game_state["actions"] <= 0:
                 render_ui("⚠️ No actions left today!", {"Back to Menu": show_main_menu})
                 return
-            
             game_state["actions"] -= 1
-            new_dog = Dog(get_unique_name(), random.choice(["Male", "Female"]), random.choice(list(BREEDS.keys())))
+            new_dog = Dog(get_unique_name(), random.choice(["Male", "Female"]), random.choice(list(BREEDS.keys())), father="Wild", mother="Wild")
             game_state["kennel"][new_dog.name] = new_dog
             render_ui(f"🎉 Expedition successful! Rescued a wild {new_dog.breed} named {new_dog.name}!", {"Back to Menu": show_main_menu})
 
         def end_day(e):
             game_state["day"] += 1
             game_state["actions"] = 3
-            
-            log = f"🌙 Advanced to Day {game_state['day']}. Actions refreshed.\n"
+            refresh_market()
+            log = f"🌙 Advanced to Day {game_state['day']}. Actions refreshed & market updated.\n"
             for dog in game_state["kennel"].values():
+                dog.age += 1
                 if dog.sex == "Female":
                     if not dog.is_pregnant:
-                        dog.is_in_heat = not dog.is_in_heat # Toggle heat cycle
+                        dog.is_in_heat = not dog.is_in_heat
                     else:
                         dog.pregnancy_days -= 1
                         if dog.pregnancy_days <= 0:
-                            pup = Dog(get_unique_name(), random.choice(["Male", "Female"]), dog.breed)
+                            pup_name = get_unique_name()
+                            pup = Dog(pup_name, random.choice(["Male", "Female"]), dog.breed, father="Kennel Sire", mother=dog.name)
                             game_state["kennel"][pup.name] = pup
                             dog.is_pregnant = False
-                            log += f"\n🐶 LITTER BORN! A new puppy arrived in your kennel: {pup.name} ({pup.breed})!"
-            
+                            log += f"\n🐶 LITTER BORN! Puppy arrived: {pup.name} ({pup.breed})!"
             render_ui(log, {"Back to Menu": show_main_menu})
 
-        show_main_menu()
+        # Kick off startup wizard
+        init_setup()
     </script>
 </body>
 </html>
