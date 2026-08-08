@@ -27,18 +27,18 @@
             border: 2px solid #285430;
             border-radius: 12px;
             padding: 30px;
-            width: 750px;
+            width: 800px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.5);
         }
         button {
             background-color: #2b7a3e;
             color: white;
             border: none;
-            padding: 12px 20px;
-            margin: 6px;
+            padding: 10px 16px;
+            margin: 5px;
             border-radius: 6px;
             cursor: pointer;
-            font-size: 15px;
+            font-size: 14px;
             font-weight: 600;
             transition: background 0.2s, transform 0.1s;
         }
@@ -54,8 +54,10 @@
             color: #e2f0d9;
             border: 1px solid #234e30;
             font-family: 'Courier New', Courier, monospace;
-            font-size: 14px;
+            font-size: 13px;
             line-height: 1.5;
+            max-height: 350px;
+            overflow-y: auto;
         }
     </style>
 </head>
@@ -68,14 +70,15 @@
         <div id="controls" style="margin-top: 20px;"></div>
     </div>
 
-    <!-- Embedded Python Game Script -->
+    <!-- Embedded Full-Feature Python Game Engine -->
     <script type="py">
         import random
         from pyscript import document
 
         NAME_POOL = [
             "Atlas", "Cleo", "Orion", "Zelda", "Blaze", "Echo", "Zeus", "Athena", 
-            "Kona", "Milo", "Scout", "Shadow", "Copper", "Duchess", "Rex", "Luna"
+            "Kona", "Milo", "Scout", "Shadow", "Copper", "Duchess", "Rex", "Luna", 
+            "Bandit", "Nova", "Ghost", "Titan", "Freya", "Fenrir", "Apollo", "Ruby"
         ]
 
         BREEDS = {
@@ -85,6 +88,30 @@
             "Cwn Annwn (Mythic)": {"group": "Mythic"},
             "Kitsune Spirit Fox-Dog": {"group": "Mythic"}
         }
+
+        class Dog:
+            def __init__(self, name, sex, breed):
+                self.name = name
+                self.sex = sex
+                self.breed = breed if breed in BREEDS else "Mutt"
+                self.age = random.randint(1, 3)
+                self.health = 100
+                self.fertility = random.randint(60, 95)
+                self.is_in_heat = True if sex == "Female" else False
+                self.is_pregnant = False
+                self.pregnancy_days = 0
+                self.stats = {
+                    "Agility": random.randint(8, 15),
+                    "Strength": random.randint(8, 15),
+                    "Perception": random.randint(8, 15)
+                }
+
+            def get_summary(self):
+                heat_status = f" | In Heat: {'🔥 Yes' if self.is_in_heat else 'No'}" if self.sex == "Female" else ""
+                preg_status = f"\n   Status: Pregnant ({self.pregnancy_days} days left)" if self.is_pregnant else ""
+                return (f"• {self.name} ({self.sex} - {self.breed}){heat_status}\n"
+                        f"   Age: {self.age} | Health: {self.health}% | Fertility: {self.fertility}%\n"
+                        f"   Stats -> Agility: {self.stats['Agility']} | Strength: {self.stats['Strength']} | Perception: {self.stats['Perception']}{preg_status}\n")
 
         game_state = {
             "money": 1200,
@@ -98,18 +125,11 @@
                 return NAME_POOL.pop(0)
             return f"Dog_{random.randint(100, 999)}"
 
-        def create_dog(name, sex, breed):
-            return {
-                "name": name, "sex": sex, "breed": breed,
-                "age": random.randint(1, 3), "health": 100,
-                "fertility": random.randint(60, 95),
-                "stats": {"Agility": random.randint(8, 15), "Strength": random.randint(8, 15), "Perception": random.randint(8, 15)}
-            }
-
-        starter_m = create_dog(get_unique_name(), "Male", random.choice(list(BREEDS.keys())))
-        starter_f = create_dog(get_unique_name(), "Female", random.choice(list(BREEDS.keys())))
-        game_state["kennel"][starter_m["name"]] = starter_m
-        game_state["kennel"][starter_f["name"]] = starter_f
+        # Initialize starting pair
+        starter_male = Dog(get_unique_name(), "Male", random.choice(list(BREEDS.keys())))
+        starter_female = Dog(get_unique_name(), "Female", random.choice(list(BREEDS.keys())))
+        game_state["kennel"][starter_male.name] = starter_male
+        game_state["kennel"][starter_female.name] = starter_female
 
         def render_ui(text, buttons_dict):
             output_div = document.querySelector("#output")
@@ -130,6 +150,7 @@
             buttons = {
                 "View Kennel": view_kennel,
                 "Train Dog (-1 Action)": train_menu,
+                "Breeding Center": breeding_menu,
                 "Explore Zones (-1 Action)": explore_zone,
                 "End Day": end_day
             }
@@ -139,9 +160,9 @@
             if not game_state["kennel"]:
                 text = "Your kennel is empty."
             else:
-                text = "🐾 KENNEL REGISTRY:\n"
+                text = "🐾 KENNEL REGISTRY:\n\n"
                 for dog in game_state["kennel"].values():
-                    text += f"\n• {dog['name']} ({dog['sex']} - {dog['breed']})\n  Age: {dog['age']} | Health: {dog['health']}% | Fertility: {dog['fertility']}%\n  Stats -> Agility: {dog['stats']['Agility']} | Strength: {dog['stats']['Strength']} | Perception: {dog['stats']['Perception']}\n"
+                    text += dog.get_summary() + "\n"
             render_ui(text, {"Back to Menu": show_main_menu})
 
         def train_menu(e):
@@ -151,17 +172,55 @@
             
             buttons = {}
             for name in game_state["kennel"].keys():
-                buttons[f"Train {name}"] = lambda event, n=name: perform_training(n)
+                buttons[f"Train {name}"] = lambda event, n=name: select_stat_to_train(n)
             buttons["Back to Menu"] = show_main_menu
-            render_ui("Select a dog to train (+3 Agility):", buttons)
+            render_ui("Select a dog to train (-1 Action):", buttons)
 
-        def perform_training(dog_name):
+        def select_stat_to_train(dog_name):
+            dog = game_state["kennel"][dog_name]
+            buttons = {
+                "Agility (+3)": lambda event, d=dog_name, s="Agility": execute_training(d, s),
+                "Strength (+3)": lambda event, d=dog_name, s="Strength": execute_training(d, s),
+                "Perception (+3)": lambda event, d=dog_name, s="Perception": execute_training(d, s),
+                "Back": train_menu
+            }
+            render_ui(f"Choose stat to train for {dog.name}:", buttons)
+
+        def execute_training(dog_name, stat):
             if game_state["actions"] > 0:
                 game_state["actions"] -= 1
-                game_state["kennel"][dog_name]["stats"]["Agility"] += 3
-                render_ui(f"✅ Training successful! {dog_name} gained +3 Agility.", {"Back to Menu": show_main_menu})
+                game_state["kennel"][dog_name].stats[stat] += 3
+                render_ui(f"✅ Training successful! {dog_name} gained +3 {stat}.", {"Back to Menu": show_main_menu})
             else:
                 render_ui("⚠️ No actions left!", {"Back to Menu": show_main_menu})
+
+        def breeding_menu(e):
+            females = [name for name, d in game_state["kennel"].items() if d.sex == "Female" and not d.is_pregnant and d.is_in_heat]
+            males = [name for name, d in game_state["kennel"].items() if d.sex == "Male"]
+
+            if not females or not males:
+                render_ui("⚠️ You need at least one active Male and one Female in Heat to breed.", {"Back to Menu": show_main_menu})
+                return
+            
+            buttons = {}
+            for f_name in females:
+                buttons[f"Breed {f_name}"] = lambda event, fn=f_name: select_father_menu(fn, males)
+            buttons["Back to Menu"] = show_main_menu
+            render_ui("Select a Female in Heat to breed:", buttons)
+
+        def select_father_menu(mom_name, males):
+            buttons = {}
+            for m_name in males:
+                buttons[f"Sire: {m_name}"] = lambda event, m=m_name, f=mom_name: confirm_breeding(f, m)
+            buttons["Back"] = breeding_menu
+            render_ui(f"Select Father for {mom_name}:", buttons)
+
+        def confirm_breeding(mom_name, dad_name):
+            mom = game_state["kennel"][mom_name]
+            mom.is_pregnant = True
+            mom.pregnancy_days = 2
+            mom.is_in_heat = False
+            render_ui(f"❤️ Success! {mom.name} is now pregnant with {dad_name}'s litter. Expected in 2 days.", {"Back to Menu": show_main_menu})
 
         def explore_zone(e):
             if game_state["actions"] <= 0:
@@ -169,14 +228,28 @@
                 return
             
             game_state["actions"] -= 1
-            new_dog = create_dog(get_unique_name(), random.choice(["Male", "Female"]), random.choice(list(BREEDS.keys())))
-            game_state["kennel"][new_dog["name"]] = new_dog
-            render_ui(f"🎉 Expedition successful! Rescued a wild {new_dog['breed']} named {new_dog['name']}!", {"Back to Menu": show_main_menu})
+            new_dog = Dog(get_unique_name(), random.choice(["Male", "Female"]), random.choice(list(BREEDS.keys())))
+            game_state["kennel"][new_dog.name] = new_dog
+            render_ui(f"🎉 Expedition successful! Rescued a wild {new_dog.breed} named {new_dog.name}!", {"Back to Menu": show_main_menu})
 
         def end_day(e):
             game_state["day"] += 1
             game_state["actions"] = 3
-            render_ui(f"🌙 Advanced to Day {game_state['day']}. Actions refreshed!", {"Back to Menu": show_main_menu})
+            
+            log = f"🌙 Advanced to Day {game_state['day']}. Actions refreshed.\n"
+            for dog in game_state["kennel"].values():
+                if dog.sex == "Female":
+                    if not dog.is_pregnant:
+                        dog.is_in_heat = not dog.is_in_heat # Toggle heat cycle
+                    else:
+                        dog.pregnancy_days -= 1
+                        if dog.pregnancy_days <= 0:
+                            pup = Dog(get_unique_name(), random.choice(["Male", "Female"]), dog.breed)
+                            game_state["kennel"][pup.name] = pup
+                            dog.is_pregnant = False
+                            log += f"\n🐶 LITTER BORN! A new puppy arrived in your kennel: {pup.name} ({pup.breed})!"
+            
+            render_ui(log, {"Back to Menu": show_main_menu})
 
         show_main_menu()
     </script>
