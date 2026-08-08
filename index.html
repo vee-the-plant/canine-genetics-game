@@ -107,7 +107,7 @@
         }
 
         class Dog:
-            def __init__(self, name, sex, breed, father="Unknown", mother="Unknown", is_puppy=False):
+            def __init__(self, name, sex, breed, father="Unknown", mother="Unknown", genes=None, is_puppy=False):
                 self.name = name
                 self.sex = sex
                 self.breed = breed if breed in BREEDS else "Mutt"
@@ -117,25 +117,51 @@
                 self.age = 0.0
                 
                 self.health = 100
-                self.fertility = random.randint(50, 95)
+                self.base_fertility = random.randint(50, 95)
                 self.is_in_heat = True if sex == "Female" else False
                 self.is_pregnant = False
                 self.pregnancy_days = 0
                 self.father = father
                 self.mother = mother
                 
-                # Traits, Hidden Attributes & Disabilities
                 self.revealed_traits = set()
-                self.disabilities = random.choice([None, None, None, "Blindness in one eye", "Hip Dysplasia", "Deafness", "Frail Constitution"])
-                
+                self.illness = None
+
+                if genes:
+                    self.genes = genes
+                else:
+                    self.genes = {
+                        "A": [random.choice(["A", "a"]), random.choice(["A", "a"])],
+                        "S": [random.choice(["S", "s"]), random.choice(["S", "s"])],
+                        "D": [random.choice(["H", "h"]), random.choice(["H", "h"])]
+                    }
+
+                self.disabilities = self.calculate_disability_from_genes()
+
                 self.stats = {
-                    "Agility": random.randint(8, 15),
-                    "Strength": random.randint(8, 15),
+                    "Agility": random.randint(8, 15) + (5 if "A" in self.genes["A"] and self.genes["A"].count("A") == 2 else 0),
+                    "Strength": random.randint(8, 15) + (5 if "S" in self.genes["S"] and self.genes["S"].count("S") == 2 else 0),
                     "Perception": random.randint(8, 15),
                     "Discipline": random.randint(5, 12),
                     "Aggression": random.randint(5, 12),
                     "Mythic Resonance": random.randint(0, 5) if self.is_mythic else 0
                 }
+
+        def calculate_disability_from_genes(self):
+            if self.genes["D"] == ["h", "h"]:
+                return random.choice(["Hip Dysplasia", "Frail Constitution", "Deafness", "Blindness in one eye"])
+            elif self.father != "Unknown" and self.mother != "Unknown" and self.father == self.mother:
+                return "Severe Inbreeding Depression"
+            return None
+
+        @property
+        def fertility(self):
+            penalty = 0
+            if self.age > 6.0:
+                penalty = int((self.age - 6.0) * 12)
+            elif self.age < 2.0:
+                penalty = int((2.0 - self.age) * 15)
+            return max(5, self.base_fertility - penalty)
 
         def get_trait_display(self, trait_name, actual_value):
             if trait_name in self.revealed_traits:
@@ -158,6 +184,14 @@
             if self.disabilities and "disability" in self.revealed_traits:
                 disab_str = f"<br>&nbsp;&nbsp;⚠️ Disability: {self.disabilities}"
 
+            illness_str = ""
+            if self.illness:
+                illness_str = f"<br>&nbsp;&nbsp;🦠 Illness: {self.illness} (Health Impacting!)"
+
+            gene_str = ""
+            if "genes" in self.revealed_traits:
+                gene_str = f"<br>&nbsp;&nbsp;🧬 Genotype (Punnet Loci): A:{self.genes['A']} S:{self.genes['S']} D:{self.genes['D']}"
+
             mythic_stat_str = ""
             if self.is_mythic:
                 myth_str = self.get_trait_display("Mythic Resonance", self.stats['Mythic Resonance'])
@@ -166,7 +200,7 @@
             stage_label = " (Puppy)" if self.age < 2.5 else ""
 
             return (f"• <span class='{sex_class}'>{self.name}</span> ({self.sex} - {self.breed}){stage_label}{heat_str}<br>"
-                    f"&nbsp;&nbsp;Age: {self.age} yrs | Health: {self.health}% | Fertility: {fert_str}{disab_str}<br>"
+                    f"&nbsp;&nbsp;Age: {self.age} yrs | Health: {self.health}% | Fertility: {fert_str}{disab_str}{illness_str}{gene_str}<br>"
                     f"&nbsp;&nbsp;Lineage -> Sire: {self.father} | Dam: {self.mother}<br>"
                     f"&nbsp;&nbsp;Stats -> Agi: {agi_str} | Str: {str_str} | Perc: {per_str} | Disc: {disc_str} | Agg: {agg_str}{mythic_stat_str}{preg_str}<br>")
 
@@ -300,7 +334,7 @@
             buttons = {
                 "View Kennel & Lineage": view_kennel,
                 "Buy Dogs (Market)": market_menu,
-                "Vet Clinic (Medical & Reveal)": vet_menu,
+                "Vet Clinic (Medical & Punnet Diagnostics)": vet_menu,
                 "Specialty Shop": shop_menu,
                 "Client Contracts": client_menu,
                 "Train Dog (Specialized)": train_menu,
@@ -314,7 +348,7 @@
             if not game_state["kennel"]:
                 text = "Your kennel is empty."
             else:
-                text = "🐾 KENNEL REGISTRY & LINEAGE (Traits hidden until evaluated by Vet):\n\n"
+                text = "🐾 KENNEL REGISTRY & LINEAGE (Fertility drops with age; check genes via Vet):\n\n"
                 for dog in game_state["kennel"].values():
                     text += dog.get_html_summary() + "\n"
             render_ui(text, {"Back to Menu": show_main_menu})
@@ -338,9 +372,10 @@
                 render_ui("⚠️ Not enough funds in the bank vault!", {"Back to Menu": show_main_menu})
 
         def vet_menu(e):
-            text = "🏥 VET CLINIC:\nChoose a medical service or diagnostic test:\n"
+            text = "🏥 VET CLINIC:\nChoose a medical service or Punnet genetic diagnostic:\n"
             buttons = {
-                "Reveal Trait / Disability / Fertility (-$50)": vet_reveal_menu,
+                "Reveal Trait / Genotype / Fertility (-$50)": vet_reveal_menu,
+                "Treat Illness / Disease (-$100)": vet_treat_illness_menu,
                 "Artificial Insemination (-$150)": vet_insemination_menu,
                 "Pregnancy Termination (-$100)": vet_abortion_menu,
                 "Back to Menu": show_main_menu
@@ -355,16 +390,16 @@
             for name in game_state["kennel"].keys():
                 buttons[f"Examine {name}"] = lambda event, n=name: execute_vet_reveal(n)
             buttons["Back"] = vet_menu
-            render_ui("Select dog for trait diagnostics:", buttons)
+            render_ui("Select dog for genetic diagnostics:", buttons)
 
         def execute_vet_reveal(dog_name):
             dog = game_state["kennel"][dog_name]
-            all_traits = ["fertility", "Agility", "Strength", "Perception", "Discipline", "Aggression", "disability"]
+            all_traits = ["fertility", "Agility", "Strength", "Perception", "Discipline", "Aggression", "disability", "genes"]
             if dog.is_mythic:
                 all_traits.append("Mythic Resonance")
             unrevealed = [t for t in all_traits if t not in dog.revealed_traits]
             if not unrevealed:
-                render_ui(f"🩺 All traits/diagnostics for {dog.name} are already fully uncovered!", {"Back to Menu": vet_menu})
+                render_ui(f"🩺 All traits/genotypes for {dog.name} are already fully uncovered!", {"Back to Menu": vet_menu})
                 return
             game_state["money"] -= 50
             chosen = random.choice(unrevealed)
@@ -374,10 +409,31 @@
                 val = f"{dog.fertility}%"
             elif chosen == "disability":
                 val = dog.disabilities if dog.disabilities else "None (Healthy)"
+            elif chosen == "genes":
+                val = f"A:{dog.genes['A']} S:{dog.genes['S']} D:{dog.genes['D']}"
             else:
                 val = str(dog.stats[chosen])
             
             render_ui(f"🩺 Revealed **{chosen}**: {val} for {dog.name}.", {"Back to Menu": vet_menu})
+
+        def vet_treat_illness_menu(e):
+            sick_dogs = [name for name, d in game_state["kennel"].items() if d.illness is not None]
+            if not sick_dogs or game_state["money"] < 100:
+                render_ui("⚠️ Requires $100 and a dog suffering from an active illness.", {"Back to Menu": vet_menu})
+                return
+            buttons = {}
+            for name in sick_dogs:
+                buttons[f"Treat {name} (-$100)"] = lambda event, n=name: execute_treat_illness(n)
+            buttons["Back"] = vet_menu
+            render_ui("Select sick dog for medical treatment:", buttons)
+
+        def execute_treat_illness(dog_name):
+            game_state["money"] -= 100
+            dog = game_state["kennel"][dog_name]
+            cured_illness = dog.illness
+            dog.illness = None
+            dog.health = min(100, dog.health + 30)
+            render_ui(f"🏥 Treatment successful! {dog.name} has recovered from {cured_illness}.", {"Back to Menu": show_main_menu})
 
         def vet_insemination_menu(e):
             females = [name for name, d in game_state["kennel"].items() if d.sex == "Female" and not d.is_pregnant and d.age >= 2.5]
@@ -395,7 +451,7 @@
             buttons = {}
             for m in males:
                 buttons[f"Sire: {m}"] = lambda event, d=m, f=mom_name: attempt_breeding(f, d, cost=150, method="Artificial Insemination")
-            buttons["Back"] = vet_insemination_menu
+            buttons["Back"] = lambda event: vet_insemination_menu(event)
             render_ui(f"Select Sire for {mom_name}:", buttons)
 
         def vet_abortion_menu(e):
@@ -527,8 +583,13 @@
             buttons = {}
             for m in males:
                 buttons[f"Sire: {m}"] = lambda event, d=m, f=mom_name: attempt_breeding(f, d, cost=0, method="Natural Breeding")
-            buttons["Back"] = natural_breed_menu
+            buttons["Back"] = lambda event: natural_breed_menu(event)
             render_ui(f"Select Adult Sire for {mom_name}:", buttons)
+
+        def punnet_recomb(gene_list_1, gene_list_2):
+            allele1 = random.choice(gene_list_1)
+            allele2 = random.choice(gene_list_2)
+            return [min(allele1, allele2), max(allele1, allele2)] if allele1 != allele2 else [allele1, allele2]
 
         def attempt_breeding(mom_name, dad_name, cost, method):
             if cost > 0 and game_state["money"] < cost:
@@ -538,16 +599,17 @@
                 game_state["money"] -= cost
 
             mom = game_state["kennel"][mom_name]
+            dad = game_state["kennel"][dad_name]
             success_roll = random.randint(1, 100)
             
-            # Breeding failure consideration based on fertility check
             if success_roll <= mom.fertility:
                 mom.is_pregnant = True
                 mom.pregnancy_days = 2
                 mom.is_in_heat = False
-                render_ui(f"❤️ {method} successful! {mom.name} successfully conceived via {dad_name}.", {"Back to Menu": show_main_menu})
+                mom.current_sire = dad_name
+                render_ui(f"❤️ {method} successful! {mom.name} successfully conceived via {dad.name} (Fertility: {mom.fertility}%).", {"Back to Menu": show_main_menu})
             else:
-                render_ui(f"❌ {method} failed! {mom.name} did not conceive this cycle (Roll: {success_roll} vs Fertility {mom.fertility}%).", {"Back to Menu": show_main_menu})
+                render_ui(f"❌ {method} failed! {mom.name} did not conceive this cycle (Roll: {success_roll} vs Decreasing Fertility {mom.fertility}%).", {"Back to Menu": show_main_menu})
 
         def stud_offer_menu(e):
             males = [name for name, d in game_state["kennel"].items() if d.sex == "Male" and d.age >= 2.5]
@@ -587,10 +649,24 @@
             refresh_market()
             log = f"🌙 Advanced to Day {game_state['day']}. Actions refreshed & market updated.\n"
             
-            for dog in list(game_state["kennel"].values()):
+            dogs_to_remove = []
+            new_puppies = []
+            
+            for name, dog in list(game_state["kennel"].items()):
                 dog.age_days += 1
                 dog.age = dog.age_days * 0.5
                 
+                if dog.illness:
+                    dog.health -= 25
+                    if dog.health <= 0:
+                        dogs_to_remove.append(name)
+                        log += f"\n💀 TRAGEDY: {dog.name} has succumbed to their illness ({dog.illness}) and passed away."
+                        continue
+                else:
+                    if random.randint(1, 100) <= 5:
+                        dog.illness = random.choice(["Parvovirus", "Kennel Cough", "Canine Distemper", "Severe Bacterial Infection"])
+                        log += f"\n🦠 OUTBREAK: {dog.name} has contracted {dog.illness}!"
+
                 if dog.sex == "Female":
                     if not dog.is_pregnant:
                         if dog.age >= 2.5:
@@ -598,18 +674,40 @@
                     else:
                         dog.pregnancy_days -= 1
                         
-                        # Dynamic mid-pregnancy checks: Miscarriage risk (10% chance per day)
                         miscarriage_roll = random.randint(1, 100)
                         if miscarriage_roll <= 10:
                             dog.is_pregnant = False
                             log += f"\n⚠️ TRAGEDY: {dog.name} suffered a spontaneous miscarriage due to health complications!"
                         elif dog.pregnancy_days <= 0:
                             dog.is_pregnant = False
+                            sire_name = getattr(dog, "current_sire", "Kennel Sire")
+                            sire_obj = game_state["kennel"].get(sire_name, None)
+                            
+                            if sire_obj:
+                                child_genes = {
+                                    "A": punnet_recomb(sire_obj.genes["A"], dog.genes["A"]),
+                                    "S": punnet_recomb(sire_obj.genes["S"], dog.genes["S"]),
+                                    "D": punnet_recomb(sire_obj.genes["D"], dog.genes["D"])
+                                }
+                            else:
+                                child_genes = None
+
                             pup_name = get_unique_name()
-                            pup = Dog(pup_name, random.choice(["Male", "Female"]), dog.breed, father="Kennel Sire", mother=dog.name, is_puppy=True)
-                            game_state["kennel"][pup.name] = pup
-                            log += f"\n🐶 LITTER BORN! Puppy arrived: {pup.name} ({pup.breed}) [Takes 5 days to reach adulthood (2.5 yrs)]!"
+                            pup = Dog(pup_name, random.choice(["Male", "Female"]), dog.breed, father=sire_name, mother=dog.name, genes=child_genes, is_puppy=True)
+                            
+                            if pup.disabilities and random.randint(1, 100) <= 50:
+                                log += f"\n💀 Genetic Tragedy: A puppy from {dog.name}'s litter was stillborn or failed to thrive due to genetic defects ({pup.disabilities})."
+                            else:
+                                new_puppies.append(pup)
+                                log += f"\n🐶 LITTER BORN! Puppy arrived: {pup.name} ({pup.breed}) with Punnet gene recombination!"
             
+            for name in dogs_to_remove:
+                if name in game_state["kennel"]:
+                    del game_state["kennel"][name]
+            
+            for pup in new_puppies:
+                game_state["kennel"][pup.name] = pup
+
             render_ui(log, {"Back to Menu": show_main_menu})
 
         # Kick off startup wizard
