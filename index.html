@@ -113,9 +113,8 @@
                 self.breed = breed if breed in BREEDS else "Mutt"
                 self.is_mythic = BREEDS.get(self.breed, {}).get("mythic", False)
                 
-                # Aging system: 1 day = 0.5 years (so 2.5 years = 5 days old)
-                self.age_days = 0 if not is_puppy else 0
-                self.age = 0.0 if not is_puppy else 0.0
+                self.age_days = 0
+                self.age = 0.0
                 
                 self.health = 100
                 self.fertility = random.randint(50, 95)
@@ -139,38 +138,37 @@
                 }
 
         def get_trait_display(self, trait_name, actual_value):
-                if trait_name in self.revealed_traits:
-                    return str(actual_value)
-                return "🔒 Hidden"
+            if trait_name in self.revealed_traits:
+                return str(actual_value)
+            return "🔒 Hidden"
 
-            def get_html_summary(self):
-                sex_class = "male-tag" if self.sex == "Male" else "female-tag"
-                fert_str = self.get_trait_display("fertility", f"{self.fertility}%")
-                agi_str = self.get_trait_display("Agility", self.stats['Agility'])
-                str_str = self.get_trait_display("Strength", self.stats['Strength'])
-                per_str = self.get_trait_display("Perception", self.stats['Perception'])
-                disc_str = self.get_trait_display("Discipline", self.stats['Discipline'])
-                agg_str = self.get_trait_display("Aggression", self.stats['Aggression'])
-                
-                heat_str = f" | In Heat: 🔥 Yes" if self.sex == "Female" and self.is_in_heat and self.age >= 2.5 else ""
-                preg_str = f"<br>&nbsp;&nbsp;Status: Pregnant ({self.pregnancy_days} days left)" if self.is_pregnant else ""
-                
-                # Disability only shows if revealed by vet
-                disab_str = ""
-                if self.disabilities and "disability" in self.revealed_traits:
-                    disab_str = f"<br>&nbsp;&nbsp;⚠️ Disability: {self.disabilities}"
+        def get_html_summary(self):
+            sex_class = "male-tag" if self.sex == "Male" else "female-tag"
+            fert_str = self.get_trait_display("fertility", f"{self.fertility}%")
+            agi_str = self.get_trait_display("Agility", self.stats['Agility'])
+            str_str = self.get_trait_display("Strength", self.stats['Strength'])
+            per_str = self.get_trait_display("Perception", self.stats['Perception'])
+            disc_str = self.get_trait_display("Discipline", self.stats['Discipline'])
+            agg_str = self.get_trait_display("Aggression", self.stats['Aggression'])
+            
+            heat_str = f" | In Heat: 🔥 Yes" if self.sex == "Female" and self.is_in_heat and self.age >= 2.5 else ""
+            preg_str = f"<br>&nbsp;&nbsp;Status: Pregnant ({self.pregnancy_days} days left)" if self.is_pregnant else ""
+            
+            disab_str = ""
+            if self.disabilities and "disability" in self.revealed_traits:
+                disab_str = f"<br>&nbsp;&nbsp;⚠️ Disability: {self.disabilities}"
 
-                mythic_stat_str = ""
-                if self.is_mythic:
-                    myth_str = self.get_trait_display("Mythic Resonance", self.stats['Mythic Resonance'])
-                    mythic_stat_str = f" | Mythic: {myth_str}"
+            mythic_stat_str = ""
+            if self.is_mythic:
+                myth_str = self.get_trait_display("Mythic Resonance", self.stats['Mythic Resonance'])
+                mythic_stat_str = f" | Mythic: {myth_str}"
 
-                stage_label = " (Puppy)" if self.age < 2.5 else ""
+            stage_label = " (Puppy)" if self.age < 2.5 else ""
 
-                return (f"• <span class='{sex_class}'>{self.name}</span> ({self.sex} - {self.breed}){stage_label}{heat_str}<br>"
-                        f"&nbsp;&nbsp;Age: {self.age} yrs | Health: {self.health}% | Fertility: {fert_str}{disab_str}<br>"
-                        f"&nbsp;&nbsp;Lineage -> Sire: {self.father} | Dam: {self.mother}<br>"
-                        f"&nbsp;&nbsp;Stats -> Agi: {agi_str} | Str: {str_str} | Perc: {per_str} | Disc: {disc_str} | Agg: {agg_str}{mythic_stat_str}{preg_str}<br>")
+            return (f"• <span class='{sex_class}'>{self.name}</span> ({self.sex} - {self.breed}){stage_label}{heat_str}<br>"
+                    f"&nbsp;&nbsp;Age: {self.age} yrs | Health: {self.health}% | Fertility: {fert_str}{disab_str}<br>"
+                    f"&nbsp;&nbsp;Lineage -> Sire: {self.father} | Dam: {self.mother}<br>"
+                    f"&nbsp;&nbsp;Stats -> Agi: {agi_str} | Str: {str_str} | Perc: {per_str} | Disc: {disc_str} | Agg: {agg_str}{mythic_stat_str}{preg_str}<br>")
 
         game_state = {
             "money": 1500,
@@ -192,7 +190,6 @@
             return f"Dog_{random.randint(100, 999)}"
 
         def init_setup():
-            # Foundation starters begin at adult age (>= 2.5 yrs, e.g., 3 yrs old / 6 age_days)
             d_list_m = []
             for _ in range(4):
                 dog = Dog(get_unique_name(), "Male", random.choice(list(BREEDS.keys())))
@@ -542,6 +539,8 @@
 
             mom = game_state["kennel"][mom_name]
             success_roll = random.randint(1, 100)
+            
+            # Breeding failure consideration based on fertility check
             if success_roll <= mom.fertility:
                 mom.is_pregnant = True
                 mom.pregnancy_days = 2
@@ -587,8 +586,8 @@
             game_state["actions"] = 3
             refresh_market()
             log = f"🌙 Advanced to Day {game_state['day']}. Actions refreshed & market updated.\n"
+            
             for dog in list(game_state["kennel"].values()):
-                # Aging progression: 1 day = 0.5 years
                 dog.age_days += 1
                 dog.age = dog.age_days * 0.5
                 
@@ -598,12 +597,19 @@
                             dog.is_in_heat = not dog.is_in_heat
                     else:
                         dog.pregnancy_days -= 1
-                        if dog.pregnancy_days <= 0:
+                        
+                        # Dynamic mid-pregnancy checks: Miscarriage risk (10% chance per day)
+                        miscarriage_roll = random.randint(1, 100)
+                        if miscarriage_roll <= 10:
+                            dog.is_pregnant = False
+                            log += f"\n⚠️ TRAGEDY: {dog.name} suffered a spontaneous miscarriage due to health complications!"
+                        elif dog.pregnancy_days <= 0:
+                            dog.is_pregnant = False
                             pup_name = get_unique_name()
                             pup = Dog(pup_name, random.choice(["Male", "Female"]), dog.breed, father="Kennel Sire", mother=dog.name, is_puppy=True)
                             game_state["kennel"][pup.name] = pup
-                            dog.is_pregnant = False
                             log += f"\n🐶 LITTER BORN! Puppy arrived: {pup.name} ({pup.breed}) [Takes 5 days to reach adulthood (2.5 yrs)]!"
+            
             render_ui(log, {"Back to Menu": show_main_menu})
 
         # Kick off startup wizard
