@@ -183,9 +183,9 @@
 
         def show_setup_males():
             needed = 2 - len(game_state["selected_males"])
-            text = f"🐾 FOUNDATION SETUP: Choose your Foundation Sires (Male). Pick {needed} more:"
+            text = f"🐾 FOUNDATION SETUP: Choose your 2 Foundation Sires (Male). Pick {needed} more:"
             if game_state["selected_males"]:
-                text += "\nCurrently Selected Males: " + ",.join([d.name for d in game_state["selected_males"]])
+                text += "\nCurrently Selected Males: " + ", ".join([d.name for d in game_state["selected_males"]])
             
             buttons = {}
             for dog in game_state["starters_m"]:
@@ -210,10 +210,8 @@
             render_plain_ui(text, buttons)
 
         def complete_setup(female_dog):
-            # Add selected males
             for m in game_state["selected_males"]:
                 game_state["kennel"][m.name] = m
-            # Add chosen female first, then pick one more automatically from remaining starters to total 2 females
             game_state["kennel"][female_dog.name] = female_dog
             remaining_females = [f for f in game_state["starters_f"] if f != female_dog]
             second_female = random.choice(remaining_females)
