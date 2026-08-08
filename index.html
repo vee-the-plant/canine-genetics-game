@@ -73,6 +73,7 @@
     </div>
 
     <!-- Embedded Python Game Engine -->
+   <!-- Embedded Python Game Engine -->
     <script type="py">
         import random
         from pyscript import document
@@ -147,62 +148,62 @@
                     "Mythic Resonance": random.randint(0, 5) if self.is_mythic else 0
                 }
 
-        def calculate_disability_from_genes(self):
-            if self.genes["D"] == ["h", "h"]:
-                return random.choice(["Hip Dysplasia", "Frail Constitution", "Deafness", "Blindness in one eye"])
-            elif self.father != "Unknown" and self.mother != "Unknown" and self.father == self.mother:
-                return "Severe Inbreeding Depression"
-            return None
+            def calculate_disability_from_genes(self):
+                if self.genes["D"] == ["h", "h"]:
+                    return random.choice(["Hip Dysplasia", "Frail Constitution", "Deafness", "Blindness in one eye"])
+                elif self.father != "Unknown" and self.mother != "Unknown" and self.father == self.mother:
+                    return "Severe Inbreeding Depression"
+                return None
 
-        @property
-        def fertility(self):
-            penalty = 0
-            if self.age > 6.0:
-                penalty = int((self.age - 6.0) * 12)
-            elif self.age < 2.0:
-                penalty = int((2.0 - self.age) * 15)
-            return max(5, self.base_fertility - penalty)
+            @property
+            def fertility(self):
+                penalty = 0
+                if self.age > 6.0:
+                    penalty = int((self.age - 6.0) * 12)
+                elif self.age < 2.0:
+                    penalty = int((2.0 - self.age) * 15)
+                return max(5, self.base_fertility - penalty)
 
-        def get_trait_display(self, trait_name, actual_value):
-            if trait_name in self.revealed_traits:
-                return str(actual_value)
-            return "🔒 Hidden"
+            def get_trait_display(self, trait_name, actual_value):
+                if trait_name in self.revealed_traits:
+                    return str(actual_value)
+                return "🔒 Hidden"
 
-        def get_html_summary(self):
-            sex_class = "male-tag" if self.sex == "Male" else "female-tag"
-            fert_str = self.get_trait_display("fertility", f"{self.fertility}%")
-            agi_str = self.get_trait_display("Agility", self.stats['Agility'])
-            str_str = self.get_trait_display("Strength", self.stats['Strength'])
-            per_str = self.get_trait_display("Perception", self.stats['Perception'])
-            disc_str = self.get_trait_display("Discipline", self.stats['Discipline'])
-            agg_str = self.get_trait_display("Aggression", self.stats['Aggression'])
-            
-            heat_str = f" | In Heat: 🔥 Yes" if self.sex == "Female" and self.is_in_heat and self.age >= 2.5 else ""
-            preg_str = f"<br>&nbsp;&nbsp;Status: Pregnant ({self.pregnancy_days} days left)" if self.is_pregnant else ""
-            
-            disab_str = ""
-            if self.disabilities and "disability" in self.revealed_traits:
-                disab_str = f"<br>&nbsp;&nbsp;⚠️ Disability: {self.disabilities}"
+            def get_html_summary(self):
+                sex_class = "male-tag" if self.sex == "Male" else "female-tag"
+                fert_str = self.get_trait_display("fertility", f"{self.fertility}%")
+                agi_str = self.get_trait_display("Agility", self.stats['Agility'])
+                str_str = self.get_trait_display("Strength", self.stats['Strength'])
+                per_str = self.get_trait_display("Perception", self.stats['Perception'])
+                disc_str = self.get_trait_display("Discipline", self.stats['Discipline'])
+                agg_str = self.get_trait_display("Aggression", self.stats['Aggression'])
+                
+                heat_str = f" | In Heat: 🔥 Yes" if self.sex == "Female" and self.is_in_heat and self.age >= 2.5 else ""
+                preg_str = f"<br>&nbsp;&nbsp;Status: Pregnant ({self.pregnancy_days} days left)" if self.is_pregnant else ""
+                
+                disab_str = ""
+                if self.disabilities and "disability" in self.revealed_traits:
+                    disab_str = f"<br>&nbsp;&nbsp;⚠️ Disability: {self.disabilities}"
 
-            illness_str = ""
-            if self.illness:
-                illness_str = f"<br>&nbsp;&nbsp;🦠 Illness: {self.illness} (Health Impacting!)"
+                illness_str = ""
+                if self.illness:
+                    illness_str = f"<br>&nbsp;&nbsp;🦠 Illness: {self.illness} (Health Impacting!)"
 
-            gene_str = ""
-            if "genes" in self.revealed_traits:
-                gene_str = f"<br>&nbsp;&nbsp;🧬 Genotype (Punnet Loci): A:{self.genes['A']} S:{self.genes['S']} D:{self.genes['D']}"
+                gene_str = ""
+                if "genes" in self.revealed_traits:
+                    gene_str = f"<br>&nbsp;&nbsp;🧬 Genotype (Punnet Loci): A:{self.genes['A']} S:{self.genes['S']} D:{self.genes['D']}"
 
-            mythic_stat_str = ""
-            if self.is_mythic:
-                myth_str = self.get_trait_display("Mythic Resonance", self.stats['Mythic Resonance'])
-                mythic_stat_str = f" | Mythic: {myth_str}"
+                mythic_stat_str = ""
+                if self.is_mythic:
+                    myth_str = self.get_trait_display("Mythic Resonance", self.stats['Mythic Resonance'])
+                    mythic_stat_str = f" | Mythic: {myth_str}"
 
-            stage_label = " (Puppy)" if self.age < 2.5 else ""
+                stage_label = " (Puppy)" if self.age < 2.5 else ""
 
-            return (f"• <span class='{sex_class}'>{self.name}</span> ({self.sex} - {self.breed}){stage_label}{heat_str}<br>"
-                    f"&nbsp;&nbsp;Age: {self.age} yrs | Health: {self.health}% | Fertility: {fert_str}{disab_str}{illness_str}{gene_str}<br>"
-                    f"&nbsp;&nbsp;Lineage -> Sire: {self.father} | Dam: {self.mother}<br>"
-                    f"&nbsp;&nbsp;Stats -> Agi: {agi_str} | Str: {str_str} | Perc: {per_str} | Disc: {disc_str} | Agg: {agg_str}{mythic_stat_str}{preg_str}<br>")
+                return (f"• <span class='{sex_class}'>{self.name}</span> ({self.sex} - {self.breed}){stage_label}{heat_str}<br>"
+                        f"&nbsp;&nbsp;Age: {self.age} yrs | Health: {self.health}% | Fertility: {fert_str}{disab_str}{illness_str}{gene_str}<br>"
+                        f"&nbsp;&nbsp;Lineage -> Sire: {self.father} | Dam: {self.mother}<br>"
+                        f"&nbsp;&nbsp;Stats -> Agi: {agi_str} | Str: {str_str} | Perc: {per_str} | Disc: {disc_str} | Agg: {agg_str}{mythic_stat_str}{preg_str}<br>")
 
         game_state = {
             "money": 1500,
