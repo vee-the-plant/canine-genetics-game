@@ -165,6 +165,7 @@
             "kennel": {},
             "active_contract": None,
             "selected_males": [],
+            "selected_females": [],
             "starters_m": [],
             "starters_f": [],
             "market_dogs": []
@@ -179,6 +180,7 @@
             game_state["starters_m"] = [Dog(get_unique_name(), "Male", random.choice(list(BREEDS.keys()))) for _ in range(4)]
             game_state["starters_f"] = [Dog(get_unique_name(), "Female", random.choice(list(BREEDS.keys()))) for _ in range(4)]
             game_state["selected_males"] = []
+            game_state["selected_females"] = []
             show_setup_males()
 
         def show_setup_males():
@@ -202,20 +204,30 @@
                 show_setup_females()
 
         def show_setup_females():
-            text = f"🐾 FOUNDATION SETUP: Sires Selected ({', '.join([d.name for d in game_state['selected_males']])}). Now choose your 2 Foundation Dams (Female):"
+            needed = 2 - len(game_state["selected_females"])
+            text = f"🐾 FOUNDATION SETUP: Sires Selected ({', '.join([d.name for d in game_state['selected_males']])}). Now choose your 2 Foundation Dams (Female). Pick {needed} more:"
+            if game_state["selected_females"]:
+                text += "\nCurrently Selected Females: " + ", ".join([d.name for d in game_state["selected_females"]])
+
             buttons = {}
             for dog in game_state["starters_f"]:
-                desc = f"{dog.name} ({dog.breed})"
-                buttons[desc] = lambda event, d=dog: complete_setup(d)
+                if dog not in game_state["selected_females"]:
+                    desc = f"{dog.name} ({dog.breed})"
+                    buttons[desc] = lambda event, d=dog: select_female_starter(d)
             render_plain_ui(text, buttons)
 
-        def complete_setup(female_dog):
+        def select_female_starter(dog):
+            game_state["selected_females"].append(dog)
+            if len(game_state["selected_females"]) < 2:
+                show_setup_females()
+            else:
+                complete_setup()
+
+        def complete_setup():
             for m in game_state["selected_males"]:
                 game_state["kennel"][m.name] = m
-            game_state["kennel"][female_dog.name] = female_dog
-            remaining_females = [f for f in game_state["starters_f"] if f != female_dog]
-            second_female = random.choice(remaining_females)
-            game_state["kennel"][second_female.name] = second_female
+            for f in game_state["selected_females"]:
+                game_state["kennel"][f.name] = f
 
             refresh_market()
             show_main_menu()
@@ -341,16 +353,9 @@
         def select_insem_sire(mom_name, males):
             buttons = {}
             for m in males:
-                buttons[f"Sire: {m}"] = lambda event, d=m, f=mom_name: confirm_insemination(f, d)
+                buttons[f"Sire: {m}"] = lambda event, d=m, f=mom_name: attempt_breeding(f, d, cost=150, method="Artificial Insemination")
             buttons["Back"] = vet_insemination_menu
             render_ui(f"Select Sire for {mom_name}:", buttons)
-
-        def confirm_insemination(mom_name, dad_name):
-            game_state["money"] -= 150
-            mom = game_state["kennel"][mom_name]
-            mom.is_pregnant = True
-            mom.pregnancy_days = 2
-            render_ui(f"🧬 Artificial Insemination successful! {mom.name} is pregnant via {dad_name}.", {"Back to Menu": show_main_menu})
 
         def vet_abortion_menu(e):
             pregnant_females = [name for name, d in game_state["kennel"].items() if d.sex == "Female" and d.is_pregnant]
@@ -474,16 +479,26 @@
         def select_natural_sire(mom_name, males):
             buttons = {}
             for m in males:
-                buttons[f"Sire: {m}"] = lambda event, d=m, f=mom_name: confirm_natural_breeding(f, d)
+                buttons[f"Sire: {m}"] = lambda event, d=m, f=mom_name: attempt_breeding(f, d, cost=0, method="Natural Breeding")
             buttons["Back"] = natural_breed_menu
             render_ui(f"Select Sire for {mom_name}:", buttons)
 
-        def confirm_natural_breeding(mom_name, dad_name):
+        def attempt_breeding(mom_name, dad_name, cost, method):
+            if cost > 0 and game_state["money"] < cost:
+                render_ui(f"⚠️ Requires ${cost}!", {"Back to Menu": vet_menu})
+                return
+            if cost > 0:
+                game_state["money"] -= cost
+
             mom = game_state["kennel"][mom_name]
-            mom.is_pregnant = True
-            mom.pregnancy_days = 2
-            mom.is_in_heat = False
-            render_ui(f"❤️ Natural breeding successful! {mom.name} is pregnant.", {"Back to Menu": show_main_menu})
+            success_roll = random.randint(1, 100)
+            if success_roll <= mom.fertility:
+                mom.is_pregnant = True
+                mom.pregnancy_days = 2
+                mom.is_in_heat = False
+                render_ui(f"❤️ {method} successful! {mom.name} successfully conceived via {dad_name}.", {"Back to Menu": show_main_menu})
+            else:
+                render_ui(f"❌ {method} failed! {mom.name} did not conceive this cycle (Roll: {success_roll} vs Fertility {mom.fertility}%).", {"Back to Menu": show_main_menu})
 
         def stud_offer_menu(e):
             males = [name for name, d in game_state["kennel"].items() if d.sex == "Male"]
@@ -520,7 +535,9 @@
             game_state["actions"] = 3
             refresh_market()
             log = f"🌙 Advanced to Day {game_state['day']}. Actions refreshed & market updated.\n"
-            for dog in game_state["kennel"].values():
+            
+            # Use list() snapshot of kennel values to prevent RuntimeError when puppies are born
+            for dog in list(game_state["kennel"].values()):
                 dog.age += 1
                 if dog.sex == "Female":
                     if not dog.is_pregnant:
