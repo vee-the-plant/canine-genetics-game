@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Canine Genetics & Mythic Lineage Tracker</title>
-    <!-- PyScript Core -->
+    <!-- PyScript Stylesheet and Core Script -->
     <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css">
     <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
     <style>
@@ -12,44 +12,50 @@
             color: #d1e7dd;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
-            padding: 20px;
+            padding: 40px;
             display: flex;
             flex-direction: column;
             align-items: center;
         }
         h1 {
             color: #a3cfbb;
-            text-shadow: 1px 1px 2px #000;
+            text-shadow: 1px 1px 3px #000;
+            margin-bottom: 25px;
         }
         #game-container {
             background-color: #15401d;
             border: 2px solid #285430;
-            border-radius: 10px;
-            padding: 25px;
-            width: 800px;
-            box-shadow: 0 8px 16px rgba(0,0,0,0.4);
+            border-radius: 12px;
+            padding: 30px;
+            width: 750px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
         }
         button {
             background-color: #2b7a3e;
             color: white;
             border: none;
-            padding: 10px 18px;
-            margin: 5px;
-            border-radius: 5px;
+            padding: 12px 20px;
+            margin: 6px;
+            border-radius: 6px;
             cursor: pointer;
             font-size: 15px;
-            transition: background 0.2s;
+            font-weight: 600;
+            transition: background 0.2s, transform 0.1s;
         }
         button:hover {
             background-color: #388e4c;
+            transform: translateY(-1px);
         }
         pre {
             background-color: #0d2312;
-            padding: 15px;
-            border-radius: 6px;
+            padding: 18px;
+            border-radius: 8px;
             white-space: pre-wrap;
             color: #e2f0d9;
             border: 1px solid #234e30;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
+            line-height: 1.5;
         }
     </style>
 </head>
@@ -59,9 +65,10 @@
     
     <div id="game-container">
         <div id="output">Loading game environment...</div>
-        <div id="controls" style="margin-top: 15px;"></div>
+        <div id="controls" style="margin-top: 20px;"></div>
     </div>
 
+    <!-- Links to your standalone Python game file -->
     <script type="py" src="./main.py"></script>
 </body>
 </html>
